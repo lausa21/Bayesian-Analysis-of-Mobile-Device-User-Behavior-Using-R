@@ -9,8 +9,8 @@ The core objective is to evaluate the performance of **Logistic Regression (with
 The dataset contains 700 observations with 11 variables.
 * **Features:** `Device Model`, `Operating System`, `App Usage Time`, `Screen On Time`, `Battery Drain`, `Number of Apps Installed`, `Data Usage`, `Age`, and `Gender`.
 * **Target Variable:** `User Behavior Class` that transformed from a multi-class (0-4) to a binary class:
-      * **0 (Low Usage):** Original classes 0, 1, 2.
-      * **1 (High Usage):** Original classes 3, 4.
+  * **0 (Low Usage):** Original classes 0, 1, 2.
+  * **1 (High Usage):** Original classes 3, 4.
 
 ---
 
