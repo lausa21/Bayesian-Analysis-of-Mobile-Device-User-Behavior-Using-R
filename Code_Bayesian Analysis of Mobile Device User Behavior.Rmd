@@ -1,0 +1,283 @@
+---
+title: "Mini Project"
+author: "Kelompok 6 - Aquilla Kyne Sudiro, Caroline Ang, Laurel Evelina Widjaja"
+date: "2024-12-06"
+output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Import the libraries
+
+```{r}
+library(rjags)
+library(tidyverse)
+library(dplyr)
+library(ggmcmc)
+```
+
+# Import the dataset
+
+```{r}
+df <- read.csv("user_behavior_dataset.csv")
+head(df)
+```
+
+# Check the structure of the dataset
+
+```{r}
+str(df)
+```
+
+# Check missing value
+
+```{r}
+colSums(is.na(df))
+```
+
+# Drop column User ID -\> not necessary for classification
+
+```{r}
+df = subset(df, select = -c(User.ID))
+head(df)
+```
+
+# Perform encoding for column Device.Model, Operating.System, and Gender
+
+-   Device.Model 1 -\> Google Pixel 5 2 -\> iPhone 12 3 -\> OnePlus 9 4
+    -\> Samsung Galaxy S21 5 -\> Xiaomi Mi 11
+
+-   Operating.System 1 -\> Android 2 -\> iOS
+
+-   Gender 1 -\> Female 2 -\> Male
+
+```{r}
+df$Device.Model <- as.integer(factor(df$Device.Model))
+df$Operating.System <- as.integer(factor(df$Operating.System))
+df$Gender <- as.integer(factor(df$Gender))
+head(df)
+```
+
+# Convert the output class into binary form
+
+-   Class 1,2,3 into class 0
+-   Class 4,5 into class 1
+
+```{r}
+df$User.Behavior.Class <- ifelse(df$User.Behavior.Class == 1 | df$User.Behavior.Class == 2 | df$User.Behavior.Class == 3, 0, 1)
+head(df)
+```
+
+```{r}
+str(df)
+```
+
+# NUMBER 1: Fit using 2 models 
+## First model: Using uninformative prior logistic regression
+```{r}
+Y <- df[, 10]
+X <- as.matrix(scale(df[, 1:9]))
+n <- length(Y)
+
+logit_string <- textConnection("model{
+  for(i in 1:n){
+  Y[i] ~ dbern(pi[i])
+  logit(pi[i]) <- beta[1] + X[i,1]*beta[2] + X[i,2]*beta[3] +
+                  X[i,3]*beta[4] + X[i,4]*beta[5] + X[i,5]*beta[6] +
+                  X[i,6]*beta[7] + X[i,7]*beta[8] + X[i,8]*beta[9] + X[i,9]*beta[10]
+                  
+  log_like_logit[i] <- logdensity.bern(Y[i], pi[i])
+  }
+  
+  for(j in 1:10){beta[j] ~ dnorm(0, 0.001)}
+
+  for (i in 1:n){
+  Y2[i] ~ dbern(pi[i])
+  }
+  
+  D[1] <- sum(Y2[])
+  D[2] <- mean(Y2[])
+  
+  }")
+
+data <- list(Y=Y, X=X, n=n)
+logit_model <- jags.model(logit_string, data=data, n.chains=2)
+update(logit_model, 1000)
+logit_sample <- coda.samples(logit_model, variable.names=c("D", "beta", "log_like_logit"), n.iter=10000)
+
+summary(logit_sample[grep("beta", colnames(as.matrix(logit_sample)))])
+```
+
+## Second model: Using uninformative prior probit regression
+```{r}
+
+probit_string <- textConnection("model{
+  for(i in 1:n){
+    Y[i] ~ dbern(pi[i])                           
+    probit(pi[i]) <- beta[1] + X[i,1]*beta[2] +   
+                     X[i,2]*beta[3] + X[i,3]*beta[4] +
+                     X[i,4]*beta[5] + X[i,5]*beta[6] +
+                     X[i,6]*beta[7] + X[i,7]*beta[8] +
+                     X[i,8]*beta[9] + X[i,9]*beta[10]
+    log_like_probit[i] <- logdensity.bern(Y[i], pi[i])
+  }
+  for(j in 1:10){
+    beta[j] ~ dnorm(0, 0.001)
+  }
+  
+  for (i in 1:n){
+  Y2[i] ~ dbern(pi[i])
+  }
+  
+  D[1] <- sum(Y2[])
+  D[2] <- mean(Y2[])
+}")
+
+data <- list(Y=Y, X=X, n=n)
+probit_model <- jags.model(probit_string, data=data, n.chains=2, quiet=TRUE)
+update(probit_model, 1000, progress.bar="none")
+probit_sample <- coda.samples(probit_model, variable.names=c("D", "beta", "log_like_probit"), n.iter=10000)
+
+summary(probit_sample[grep("beta", colnames(as.matrix(probit_sample)))])
+```
+
+
+# NUMBER 2: Perform Convergence Diagnostics
+## First method: graphical diagnostics
+### Logistic Regression
+```{r}
+par(mar = c(4,4,2,1))
+plot(logit_sample[, grep("beta", colnames(as.matrix(logit_sample)))])
+autocorr.plot(logit_sample[, grep("beta", colnames(as.matrix(logit_sample)))])
+```
+### Probit Regression
+```{r}
+par(mar = c(4,4,2,1))
+plot(probit_sample[, grep("beta", colnames(as.matrix(probit_sample)))])
+autocorr.plot(probit_sample[, grep("beta", colnames(as.matrix(probit_sample)))])
+```
+## Second method: using numerical diagnostics
+### Logistic Regression
+```{r} 
+num_logit <- logit_sample[, grep("beta", colnames(as.matrix(logit_sample)))]
+effectiveSize(num_logit) 
+gelman.diag(num_logit) 
+geweke.diag(num_logit[[1]]) 
+geweke.diag(num_logit[[2]])
+
+```
+### Probit Regression
+```{r}
+num_probit <- probit_sample[, grep("beta", colnames(as.matrix(probit_sample)))]
+effectiveSize(num_probit) 
+gelman.diag(num_probit) 
+geweke.diag(num_probit[[1]]) 
+geweke.diag(num_probit[[2]])
+```
+
+# NUMBER 3: Two Information Criteria
+## DIC
+### Logistic Regresssion
+```{r}
+DIC_logit <- dic.samples(logit_model, n.iter=5000, n.thin=5)
+DIC_logit
+```
+
+### Probit Regression
+```{r}
+DIC_probit <- dic.samples(probit_model, n.iter=5000, n.thin=5)
+DIC_probit
+```
+
+## WAIC
+### Logistic Regression
+```{r}
+combined_logit <- as.matrix(do.call(rbind, logit_sample))
+
+X <- scale(df[, 1:9])
+Y <- df$User.Behavior.Class  
+X_with_intercept <- cbind(1, X)  
+
+log_like_logit <- combined_logit[, grep("log_like_logit", colnames(as.matrix(combined_logit)))]
+log_like_logit_mat <- matrix(log_like_logit, nrow = nrow(combined_logit), byrow = TRUE)
+
+fbar_logit <- colMeans(exp(log_like_logit_mat))
+Pw_logit <- sum(apply(log_like_logit_mat, 2, var))
+
+
+WAIC_logit <- -2 * sum(log(fbar_logit)) + 2 * Pw_logit
+print(WAIC_logit)
+```
+
+### Probit Regression
+```{r}
+combined_probit <- as.matrix(do.call(rbind, probit_sample))
+
+log_like_probit <- combined_probit[, grep("log_like_probit", colnames(as.matrix(combined_probit)))]
+log_like_probit_mat <- matrix(log_like_probit, nrow = nrow(combined_probit), byrow = TRUE)
+
+fbar_probit <- colMeans(exp(log_like_probit_mat))
+Pw_probit <- sum(apply(log_like_probit_mat, 2, var))
+
+
+WAIC_probit <- -2 * sum(log(fbar_probit)) + 2 * Pw_probit
+print(WAIC_probit)
+```
+
+### Which covariates affect the target var
+```{r}
+colNames <- colnames(X)
+sumProbit <- summary(probit_sample[, grep("beta", colnames(as.matrix(probit_sample)))])
+sumProbit
+
+```
+
+
+# NUMBER 5: Posterior Predictive Check
+## Logistic Regression
+```{r}
+D <- combined_logit[, grep("D", colnames(as.matrix(combined_logit)))]
+
+D0 <- c(sum(Y), mean(Y))
+Dnames <- c("sum Y", "mean Y")
+
+pval <- rep(0,2)
+names(pval) <- Dnames
+
+for(j in 1:2){
+  plot(density(D[,j]),xlim=range(c(D0[j],D[,j])), xlab="D",ylab="Posterior probability",main=Dnames[j])
+  abline(v=D0[j],col=2)
+  legend("topleft",c("Model","Data"),lty=1,col=1:2,bty="n")
+  
+  pval[j] <- mean(D[,j]>D0[j])
+}
+pval
+```
+
+## Probit Regression
+```{r}
+D <- combined_probit[, grep("D", colnames(as.matrix(combined_probit)))]
+
+D0 <- c(sum(Y), mean(Y))
+Dnames <- c("sum Y", "mean Y")
+
+pval <- rep(0,2)
+names(pval) <- Dnames
+
+for(j in 1:2){
+  plot(density(D[,j]),xlim=range(c(D0[j],D[,j])), xlab="D",ylab="Posterior probability",main=Dnames[j])
+  abline(v=D0[j],col=2)
+  legend("topleft",c("Model","Data"),lty=1,col=1:2,bty="n")
+  
+  pval[j] <- mean(D[,j]>D0[j])
+}
+pval
+```
+
+
+
