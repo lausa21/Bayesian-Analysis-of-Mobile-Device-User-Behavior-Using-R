@@ -1,5 +1,5 @@
 # 📱 Bayesian Analysis of Mobile Device User Behavior
-This project, developed for a Bayesian Data Analysis course, aims to predict a user's mobile device usage behavior by classifying them into one of two categories: high-frequency or low-frequency users. The analysis utilizes the **"Mobile Device Usage and User Behavior Dataset"** to build and compare two Bayesian regression models for binary classification.
+This project, developed for a Bayesian Data Analysis course in my 2nd-semester, aims to predict a user's mobile device usage behavior by classifying them into one of two categories: high-frequency or low-frequency users. The analysis utilizes the **"Mobile Device Usage and User Behavior Dataset"** to build and compare two Bayesian regression models for binary classification.
 
 The core objective is to evaluate the performance of **Logistic Regression (with a logit link)** against **Probit Regression (with a probit link)**. The comparison is based on posterior estimates, model convergence diagnostics (ESS, Gelman-Rubin, Geweke), and predictive accuracy metrics (DIC and WAIC).
 
