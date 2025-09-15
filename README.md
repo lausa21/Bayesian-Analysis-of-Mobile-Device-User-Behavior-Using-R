@@ -32,6 +32,8 @@ Model performance was compared using the Deviance Information Criterion (DIC) an
 ### 🏆 Conclusion
 The **Probit Regression model** proved to be a slightly better and more reliable classifier for predicting mobile user behavior in this analysis. It successfully identified key predictors like `Screen On Time` and `Device Model`. While the model is effective, further refinement could enhance its predictive accuracy.
 
+---
+
 ### 🖋 Author
 Aquila Kyne Sudiro
 Caroline Ang
