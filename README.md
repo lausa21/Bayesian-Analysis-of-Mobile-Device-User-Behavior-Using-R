@@ -35,6 +35,6 @@ The **Probit Regression model** proved to be a slightly better and more reliable
 ---
 
 ### 🖋 Author
-Aquila Kyne Sudiro
-Caroline Ang
-Laurel Evelina Widjaja
+* Aquila Kyne Sudiro
+* Caroline Ang
+* Laurel Evelina Widjaja
